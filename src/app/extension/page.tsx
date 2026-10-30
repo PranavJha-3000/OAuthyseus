@@ -17,7 +17,7 @@ export default function ExtensionPage() {
       <ol className="mt-4 list-decimal space-y-3 pl-5">
         <li>
           Get the <code className="font-mono text-sm">extension</code> folder from the{" "}
-          <a className="text-sea underline underline-offset-2" href="https://github.com/PranavJha-3000/oauthseus/tree/main/extension">source repository</a>.
+          <a className="text-sea underline underline-offset-2" href="https://github.com/PranavJha-3000/OAuthyseus/tree/main/extension">source repository</a>.
         </li>
         <li>In Chrome, open <code className="font-mono text-sm">chrome://extensions</code> and turn on Developer mode (top right).</li>
         <li>Click <strong>Load unpacked</strong> and choose the <code className="font-mono text-sm">extension</code> folder.</li>
