@@ -5,7 +5,7 @@ import type { ProbeKind, ProbeResult } from "../types";
 // Real, credential-free checks the agent can run against a provider.
 // These are what lets a guide say "tested" instead of "the docs say so".
 
-const UA = "OAuthseus-probe/1.0 (+https://github.com/; read-only OAuth setup research)";
+const UA = "OAuthseus-probe/1.0 (+https://github.com/PranavJha-3000/oauthseus; read-only OAuth setup research)";
 const TIMEOUT_MS = 10_000;
 
 function isPrivateIp(ip: string): boolean {
