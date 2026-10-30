@@ -1,6 +1,7 @@
 import { runInvestigation } from "@/lib/agent/investigate";
 import { matchCurated } from "@/lib/guides";
 import { saveGenerated } from "@/lib/store";
+import { llmConfig } from "@/lib/llm";
 import type { InvestigationEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -10,8 +11,11 @@ export async function POST(req: Request) {
   const { query, force } = (await req.json().catch(() => ({}))) as { query?: string; force?: boolean };
   const q = (query ?? "").trim().slice(0, 200);
   if (q.length < 2) return Response.json({ error: "Enter an app name or website." }, { status: 400 });
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
-    return Response.json({ error: "The server has no ANTHROPIC_API_KEY configured, so live investigation is unavailable." }, { status: 503 });
+  if (!llmConfig()) {
+    return Response.json(
+      { error: "Live investigation needs a model key on the server. Set GEMINI_API_KEY (free tier), GROQ_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY." },
+      { status: 503 },
+    );
   }
 
   const encoder = new TextEncoder();

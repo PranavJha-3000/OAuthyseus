@@ -9,7 +9,7 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_AP
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
 
 const LOCAL_DIR = process.env.VERCEL
-  ? path.join(os.tmpdir(), "oauthyseus")
+  ? path.join(os.tmpdir(), "oauthseus")
   : path.join(process.cwd(), ".data", "generated");
 
 const KEY = (id: string) => `guide:${id}`;

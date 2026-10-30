@@ -45,7 +45,7 @@ function fetchPage(url: string) {
   if (!pageCache.has(url)) {
     pageCache.set(
       url,
-      fetch(url, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 OAuthyseus-verifier", "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(20000) })
+      fetch(url, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 OAuthseus-verifier", "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(20000) })
         .then(async (r) => ({ ok: r.ok, status: r.status, text: normalizeText(htmlToText(await r.text())) }))
         .catch(() => ({ ok: false, status: null, text: "" })),
     );

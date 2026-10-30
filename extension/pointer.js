@@ -1,8 +1,8 @@
-// OAuthyseus pointer: draws a step card and a spotlight on the real provider console.
+// OAuthseus pointer: draws a step card and a spotlight on the real provider console.
 // Finds elements by their visible label first; falls back to screenshot pointing on request.
 (() => {
-  if (window.__oauthyseusPointer) return;
-  window.__oauthyseusPointer = true;
+  if (window.__oauthseusPointer) return;
+  window.__oauthseusPointer = true;
 
   const send = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
@@ -14,7 +14,7 @@
 
   // ---------- DOM ----------
   const host = document.createElement("div");
-  host.id = "oauthyseus-pointer";
+  host.id = "oauthseus-pointer";
   host.style.cssText = "all: initial; position: fixed; inset: 0; pointer-events: none; z-index: 2147483646;";
   const root = host.attachShadow({ mode: "open" });
   root.innerHTML = `
@@ -53,7 +53,7 @@
     </style>
     <div class="ring"></div>
     <div class="tip"></div>
-    <div class="card" role="dialog" aria-label="OAuthyseus walkthrough"></div>`;
+    <div class="card" role="dialog" aria-label="OAuthseus walkthrough"></div>`;
   const ring = root.querySelector(".ring");
   const tip = root.querySelector(".tip");
   const card = root.querySelector(".card");
@@ -139,7 +139,7 @@
     const t = s.pointer.targets[targetIdx];
     const right = onRightPage();
     card.innerHTML = `
-      <div class="hd"><span class="brand">OAuthyseus · ${esc(state.guide.name)}</span><button class="x" data-a="close" aria-label="End walkthrough">×</button></div>
+      <div class="hd"><span class="brand">OAuthseus · ${esc(state.guide.name)}</span><button class="x" data-a="close" aria-label="End walkthrough">×</button></div>
       <div class="bd">
         <div class="k">Step ${state.index + 1} of ${n}</div>
         <h3>${esc(s.title)}</h3>
@@ -248,7 +248,7 @@
     if (a === "close" || (a === "next" && state.index === state.guide.steps.length - 1)) {
       await send({ type: "stop" });
       host.remove();
-      window.__oauthyseusPointer = false;
+      window.__oauthseusPointer = false;
       return;
     }
     if (a === "next") return goTo(state.index + 1);

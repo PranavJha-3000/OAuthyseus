@@ -8,7 +8,7 @@ const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-public-sa
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "OAuthyseus: OAuth app setup guides", template: "%s · OAuthyseus" },
+  title: { default: "OAuthseus: OAuth app setup guides", template: "%s · OAuthseus" },
   description:
     "How long until your users can connect? Evidence-backed guides for registering and getting OAuth apps approved, plus an agent that investigates any app live.",
 };
@@ -19,8 +19,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-dvh">
         <header className="border-b border-line">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-6">
-            <Link href="/" className="flex items-baseline gap-2" aria-label="OAuthyseus home">
-              <span className="font-display text-xl font-bold tracking-tight">OAuthyseus</span>
+            <Link href="/" className="flex items-baseline gap-2" aria-label="OAuthseus home">
+              <span className="font-display text-xl font-bold tracking-tight">OAuthseus</span>
               <span className="hidden text-sm text-muted lg:inline">the long way home, mapped</span>
             </Link>
             <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">

@@ -5,7 +5,7 @@ import type { ProbeKind, ProbeResult } from "../types";
 // Real, credential-free checks the agent can run against a provider.
 // These are what lets a guide say "tested" instead of "the docs say so".
 
-const UA = "OAuthyseus-probe/1.0 (+https://github.com/; read-only OAuth setup research)";
+const UA = "OAuthseus-probe/1.0 (+https://github.com/; read-only OAuth setup research)";
 const TIMEOUT_MS = 10_000;
 
 function isPrivateIp(ip: string): boolean {
@@ -18,7 +18,7 @@ function isPrivateIp(ip: string): boolean {
 }
 
 // The agent picks the URLs, so treat them as untrusted: public https hosts only.
-async function assertPublicHttps(raw: string): Promise<URL> {
+export async function assertPublicHttps(raw: string): Promise<URL> {
   const url = new URL(raw);
   if (url.protocol !== "https:") throw new Error("only https URLs are probed");
   if (url.username || url.password) throw new Error("credentials in URL are not allowed");
@@ -103,7 +103,7 @@ export async function probeDiscovery(issuerOrUrl: string): Promise<ProbeResult> 
 export async function probeAuthorize(authorizeUrl: string): Promise<ProbeResult> {
   try {
     const url = await assertPublicHttps(authorizeUrl);
-    url.searchParams.set("client_id", "oauthyseus-probe-unregistered");
+    url.searchParams.set("client_id", "oauthseus-probe-unregistered");
     url.searchParams.set("response_type", "code");
     url.searchParams.set("redirect_uri", "https://example.com/oauth/callback");
     url.searchParams.set("state", "probe");

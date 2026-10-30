@@ -33,12 +33,12 @@ export default function ExtensionPage() {
         </li>
         <li>
           <strong>Screenshot fallback.</strong> Providers rename things. If a label isn't found, press{" "}
-          <strong>Point for me</strong>: the extension screenshots the visible tab and asks Claude to find the closest match,
+          <strong>Point for me</strong>: the extension screenshots the visible tab and asks the vision model to find the closest match,
           or to tell you that you're on the wrong page. Screenshots are only taken when you press the button.
         </li>
         <li>
           <strong>Works on agent-generated guides too.</strong> For consoles outside the built-in list, open the console and
-          click the OAuthyseus toolbar icon. That grants access to that one tab only.
+          click the OAuthseus toolbar icon. That grants access to that one tab only.
         </li>
       </ul>
 

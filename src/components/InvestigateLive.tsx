@@ -224,7 +224,7 @@ export function InvestigateLive({ initialQuery }: { initialQuery: string }) {
             )}
           </section>
 
-          <section aria-label="Live activity" className="min-w-0 rounded-xl border border-line bg-surface">
+          <section aria-label="Live activity" className={`min-w-0 rounded-xl border border-line bg-surface ${activity.length === 0 && !running ? "hidden" : ""}`}>
             <h2 className="border-b border-line px-5 py-3 text-sm font-medium">What the agent is doing</h2>
             <ol ref={feedRef} className="max-h-[32rem] space-y-0 overflow-y-auto">
               {activity.map((a, i) => (

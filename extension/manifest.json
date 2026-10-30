@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "OAuthyseus Console Pointer",
+  "name": "OAuthseus Console Pointer",
   "version": "0.1.0",
-  "description": "Highlights the exact button or field for each step of an OAuthyseus guide, inside your own signed-in provider console.",
+  "description": "Highlights the exact button or field for each step of an OAuthseus guide, inside your own signed-in provider console.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
     "https://console.cloud.google.com/*",

@@ -1,8 +1,8 @@
-# OAuthyseus
+# OAuthseus
 
 **How long until your users can connect?**
 
-Before an AI agent can act on someone's Gmail, Slack or Notion, its developer has to register an OAuth app with that provider. Sometimes that's a 15-minute form. Sometimes it's weeks of review and a paid security audit. OAuthyseus tells you which, before you start, and walks you through it.
+Before an AI agent can act on someone's Gmail, Slack or Notion, its developer has to register an OAuth app with that provider. Sometimes that's a 15-minute form. Sometimes it's weeks of review and a paid security audit. OAuthseus tells you which, before you start, and walks you through it.
 
 - **Guide library.** Seven hand-checked guides chosen to cover the range of difficulty: GitHub and Notion (easy), HubSpot and Microsoft (moderate), Google and Slack (hard), X (gated by price and policy).
 - **Live investigation.** Enter any app name or website. An agent researches it from scratch, probes the live console and OAuth endpoints, and writes a guide in the same format. You watch it work, and you get a shareable link at the end.
@@ -50,13 +50,20 @@ Researching seven providers showed three things that shaped the product:
 
 ## What the agent does, and where you take over
 
-The live investigator (`src/lib/agent/investigate.ts`) is one Claude Opus 5.5 tool-use loop with:
+The live investigator runs on **free-tier models**. Any OpenAI-compatible API works: Gemini (recommended), Groq or OpenRouter. If an Anthropic key is set instead, it uses Claude. All the tools are its own, so nothing depends on a paid search API:
 
-- server-side `web_search` and `web_fetch` for reading docs;
-- three probe tools that run real HTTP checks without credentials (`src/lib/agent/probes.ts`), with SSRF protection: public HTTPS hosts only;
-- a `submit_guide` tool whose input is validated against the guide schema with Zod. Validation errors go back to the model to fix.
+- **`web_search`:** DuckDuckGo Lite with Bing as fallback, no key needed. Tavily or Brave is used if you set their free-tier keys (`src/lib/agent/web.ts`).
+- **`fetch_page`:** fetches the page directly, falls back to the free Jina reader for pages that render in the browser, and returns the passages around the model's focus terms so long docs fit a small context window.
+- **Three probe tools** run real HTTP checks without credentials (`src/lib/agent/probes.ts`), with SSRF protection: public HTTPS hosts only.
 
-After the model submits, `ground.ts` checks every quote against the pages the agent actually fetched and downgrades anything it can't back up. The guide records the agent's searches, the pages it read, its probes and the grounding result. The UI streams the agent's progress over server-sent events.
+The free-tier engine (`src/lib/agent/open.ts`) works in two phases:
+
+1. **Research:** a tool-calling loop that searches, reads and probes. Every page it reads gets a source ID (`s1`, `s2`, …).
+2. **Writing:** a separate JSON-mode call writes the guide from the gathered excerpts. The phases are split because Gemini rejects tool calling and JSON mode in the same request.
+
+Output is validated with Zod; on failure, the errors go back to the model, up to three attempts. Rate-limit responses (429) are retried after the provider's suggested delay, and the live log shows the wait. The Claude engine (`src/lib/agent/claude.ts`) does the same job with Claude's server-side web tools.
+
+After the guide is written, `ground.ts` checks every quote against the pages the agent actually fetched and downgrades anything it can't back up. The guide records the agent's searches, the pages it read, its probes and the grounding result. The UI streams the agent's progress over server-sent events.
 
 Every step in a guide says who does it:
 - **An agent can do this:** drafting a privacy policy, writing scope justifications, writing a demo-video script, writing the code.
@@ -76,12 +83,20 @@ The pointer extension follows the same rule. It highlights and explains, but nev
 
 ```bash
 npm install
-cp .env.example .env.local   # add ANTHROPIC_API_KEY
+cp .env.example .env.local   # add a free GEMINI_API_KEY from https://aistudio.google.com/apikey
 npm run dev                  # http://localhost:3000
 ```
 
-- The library and guide pages work without an API key. Live investigation and screenshot pointing need one.
-- To deploy: on Vercel, set `ANTHROPIC_API_KEY`. For shareable generated guides, also set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (the Upstash free tier is enough). Without them, generated guides go to `/tmp` and don't survive a cold start.
+- The library and guide pages work without any key. Live investigation and screenshot pointing need one model key.
+- The model is chosen by whichever key is set, checked in this order:
+  1. `LLM_BASE_URL` + `LLM_API_KEY` (+ `LLM_MODEL`)
+  2. `GEMINI_API_KEY` (newest Flash model picked automatically; override with `GEMINI_MODEL`)
+  3. `GROQ_API_KEY`
+  4. `OPENROUTER_API_KEY` (a `:free` model is picked; override with `OPENROUTER_MODEL`)
+  5. `ANTHROPIC_API_KEY`
+- Groq's free tier allows only a few thousand tokens a minute, and reading docs pages exceeds that, so Gemini works best.
+- To check the tools without any model: `npx tsx scripts/smoke-tools.mts "Calendly"`.
+- To deploy: on Vercel, set your model key. For shareable generated guides, also set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (the Upstash free tier is enough). Without them, generated guides go to `/tmp` and don't survive a cold start.
 - To re-verify the library: `npx tsx scripts/verify-guides.ts`.
 - To install the extension: open `chrome://extensions`, turn on Developer mode, click **Load unpacked** and choose `extension/`. The bridge only runs on `localhost` and `*.vercel.app`.
 
@@ -89,5 +104,7 @@ npm run dev                  # http://localhost:3000
 
 - **Waiting times:** published maximums plus community reports. I didn't run real reviews.
 - **Console labels:** taken from the docs. The label matcher is heuristic; the screenshot fallback covers renamed labels, but only after you press "Point for me".
-- **Run time:** a live investigation takes 2–4 minutes and runs inside one serverless function (300 s cap on Vercel). A long run on a provider with sprawling docs can hit that cap.
+- **Run time:** a live investigation takes 2–4 minutes and runs inside one serverless function (300 s cap on Vercel). Free-tier rate-limit waits and providers with sprawling docs can push a run past that cap.
+- **Keyless search** scrapes DuckDuckGo Lite and Bing, which can throttle or change their markup. A free Tavily or Brave key makes search dependable.
+- **Free-tier model quality:** smaller models write weaker guides and make more quote mistakes. The grounding check catches invented quotes, but not thin research.
 - **Generated guides** are not reviewed by a person. The page says so, and the grounding check is the safety net.

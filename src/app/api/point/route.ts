@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { MODEL } from "@/lib/agent/investigate";
+import { CLAUDE_MODEL } from "@/lib/agent/claude";
+import { chat, llmConfig } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,6 +29,7 @@ const PointResult = z.object({
   explanation: z.string().describe("one short sentence telling the developer what to do with it"),
   wrongPage: z.boolean().describe("true if this screen is not where the step happens"),
 });
+type PointResult = z.infer<typeof PointResult>;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -39,25 +41,8 @@ export function OPTIONS() {
   return new Response(null, { headers: CORS });
 }
 
-export async function POST(req: Request) {
-  const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Invalid request." }, { status: 400, headers: CORS });
-  const { image, width, height, step } = parsed.data;
-  const client = new Anthropic();
-
-  try {
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 4000,
-      output_config: { effort: "low", format: zodOutputFormat(PointResult) },
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } },
-            {
-              type: "text",
-              text: `This is a ${width}x${height} screenshot of a developer console. The developer is on this step of an OAuth app setup guide:
+function prompt(width: number, height: number, step: z.infer<typeof Body>["step"]) {
+  return `This is a ${width}x${height} screenshot of a developer console. The developer is on this step of an OAuth app setup guide:
 
 Step: ${step.title}
 Instructions:
@@ -65,14 +50,57 @@ ${step.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 
 Elements we expected to find: ${step.targets.map((t) => `"${t.text}" (${t.kind}: ${t.hint})`).join("; ")}
 
-Find the single element the developer should interact with next for this step. Return its centre in screenshot pixels. If the labels differ slightly (the provider renamed something), pick the closest equivalent and say so. If this screen is clearly not where this step happens, set wrongPage true and explain where to go. If nothing fits, set found false.`,
-            },
-          ],
-        },
-      ],
-    });
-    const out = res.parsed_output;
-    if (!out) return Response.json({ error: "No answer from the model." }, { status: 502, headers: CORS });
+Find the single element the developer should interact with next for this step. Return its centre in screenshot pixels. If the labels differ slightly (the provider renamed something), pick the closest equivalent and say so. If this screen is clearly not where this step happens, set wrongPage true and explain where to go. If nothing fits, set found false.`;
+}
+
+export async function POST(req: Request) {
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return Response.json({ error: "Invalid request." }, { status: 400, headers: CORS });
+  const { image, width, height, step } = parsed.data;
+  const cfg = llmConfig();
+  if (!cfg) return Response.json({ error: "No model key is configured on the server." }, { status: 503, headers: CORS });
+
+  try {
+    let out: PointResult | null = null;
+    if (cfg.kind === "anthropic") {
+      const res = await new Anthropic().messages.parse({
+        model: CLAUDE_MODEL,
+        max_tokens: 4000,
+        output_config: { effort: "low", format: zodOutputFormat(PointResult) },
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } },
+              { type: "text", text: prompt(width, height, step) },
+            ],
+          },
+        ],
+      });
+      out = res.parsed_output;
+    } else {
+      const { message } = await chat(cfg, {
+        json: true,
+        maxTokens: 2000,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
+              {
+                type: "text",
+                text: `${prompt(width, height, step)}\n\nAnswer with only a JSON object: {"found": boolean, "x": number, "y": number, "label": string, "explanation": string, "wrongPage": boolean}`,
+              },
+            ],
+          },
+        ],
+      });
+      const text = typeof message.content === "string" ? message.content : "";
+      const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+      const p = PointResult.safeParse(JSON.parse(json));
+      out = p.success ? p.data : null;
+    }
+    if (!out) return Response.json({ error: "No usable answer from the model." }, { status: 502, headers: CORS });
     return Response.json(
       { ...out, x: Math.max(0, Math.min(width, out.x)) / width, y: Math.max(0, Math.min(height, out.y)) / height },
       { headers: CORS },
