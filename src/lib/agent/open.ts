@@ -1,6 +1,6 @@
 import type { Guide, ProbeResult } from "../types";
 import { GuideDraftSchema, type GuideDraft } from "../schema";
-import { chat, resolveModel, type ChatMessage, type ChatTool, type LlmConfig } from "../llm";
+import { chat, pickResponsiveModel, resolveModel, type ChatMessage, type ChatTool, type LlmConfig } from "../llm";
 import { probeAuthorize, probeDiscovery, probePage } from "./probes";
 import { excerpt, fetchPage, webSearch } from "./web";
 import { createTracker, finalizeGuide, normUrl, RULES, type Emit, type FetchedText } from "./common";
@@ -14,7 +14,7 @@ type OpenCfg = Extract<LlmConfig, { kind: "openai" }>;
 
 const RESEARCH_SYSTEM = `You are OAuthseus, a research agent that finds out what it really takes for a developer to register an OAuth app with a provider and get it approved so that their end users can connect their accounts to the developer's AI agent.
 
-Investigate the app you are given from scratch using the tools. Work efficiently: about 4-6 searches and 5-8 page reads. The developer is watching live.
+Investigate the app you are given from scratch using the tools. Work efficiently but thoroughly: about 4-6 searches and 5-8 page reads (read at least 4 official pages before finishing: app registration, scopes/permissions, tokens/refresh, and any app review, marketplace, partner or publishing page). The developer is watching live.
 1. web_search for the official developer docs, then fetch_page the most relevant official pages. Use "focus" terms (e.g. ["redirect", "scope", "review"]) on long pages.
 2. Find: where and how an OAuth app/client is registered (console URL, fields, redirect URI rules, scopes, credentials, token lifetime/refresh).
 3. Find: what is required before other people's accounts can connect (app review, verification, marketplace listing, security assessment, partner program, paid plan, install caps, admin consent) and any published timelines.
@@ -75,23 +75,35 @@ function extractJson(text: string): unknown {
 
 export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Emit, signal?: AbortSignal): Promise<Guide> {
   const startedAt = new Date().toISOString();
-  const model = await resolveModel(cfg);
+  emit({ type: "note", text: `Checking which ${cfg.label} models are responding…` });
+  const model = (await pickResponsiveModel(cfg)) ?? (await resolveModel(cfg));
   emit({ type: "note", text: `Using ${cfg.label} (${model}).` });
   const tracker = createTracker(emit);
   const searches: string[] = [];
   const fetched = new Map<string, FetchedText>();
   const sourceIds = new Map<string, string>(); // normUrl -> s#
   const probes: Array<ProbeResult & { id: string }> = [];
-  const onWait = (s: number) => emit({ type: "note", text: `Free-tier rate limit reached; waiting ${s}s before continuing.` });
+  const snippets: string[] = [];
+  let usedModel = model;
+  const llmOpts = {
+    signal,
+    onWait: (s: number) => emit({ type: "note", text: `Free-tier rate limit reached; waiting ${s}s before continuing.` }),
+    onSwitch: (from: string, to: string, why: string) => emit({ type: "note", text: `${from} is ${why}; switching to ${to}.` }),
+  };
 
   const runTool = async (name: string, args: Record<string, unknown>): Promise<string> => {
     if (name === "web_search") {
       const q = String(args.query ?? "").slice(0, 200);
+      // Weaker models can loop on searching; make them read what they found.
+      if (searches.length >= 10 || (searches.length >= 5 && fetched.size === 0)) {
+        return "Search budget used. Call fetch_page on the most relevant official URLs from the results you already have.";
+      }
       searches.push(q);
       emit({ type: "search", query: q });
       tracker.onSearch(q);
       const { engine, results } = await webSearch(q);
       if (results.length === 0) return "No results (search engines unavailable). Try fetch_page on a likely docs URL.";
+      results.slice(0, 5).forEach((r) => snippets.push(`- ${r.title} (${r.url}): ${r.snippet}`));
       return `Results (${engine}):\n` + results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`).join("\n");
     }
     if (name === "fetch_page") {
@@ -127,15 +139,21 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
   };
 
   // ---- Phase 1: research loop ----
+  // Free tiers allow only a few requests a minute, so the code runs the obvious first search itself.
+  const seed = await runTool("web_search", { query: `${query} OAuth app developer documentation` });
   const messages: ChatMessage[] = [
     { role: "system", content: RESEARCH_SYSTEM },
-    { role: "user", content: `Investigate the OAuth app setup and approval process for: ${query}` },
+    {
+      role: "user",
+      content: `Investigate the OAuth app setup and approval process for: ${query}\n\nA first search has already been run for you:\n${seed}\n\nEach turn, call several tools at once (for example 2-4 fetch_page calls on the most relevant official pages) so the research finishes in a few turns.`,
+    },
   ];
   let notes = "";
-  for (let turn = 0; turn < 18; turn++) {
+  for (let turn = 0; turn < 12; turn++) {
     if (signal?.aborted) throw new Error("Investigation cancelled.");
-    if (turn === 14) messages.push({ role: "user", content: "Time is nearly up. Call finish_research now with your notes." });
-    const { message } = await chat(cfg, { messages, tools: TOOLS, maxTokens: 4000 }, { signal, onWait });
+    if (turn === 8) messages.push({ role: "user", content: "Time is nearly up. Run any probes you still need, then call finish_research with your notes." });
+    const { message, model: m } = await chat(cfg, { messages, tools: TOOLS, maxTokens: 8000, effort: "low", timeoutMs: 45_000 }, llmOpts);
+    usedModel = m;
     messages.push(message);
     if (message.content && typeof message.content === "string" && message.content.trim()) {
       const t = message.content.trim();
@@ -162,7 +180,8 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
 
   // ---- Phase 2: write the guide in JSON mode from the gathered evidence ----
   tracker.advanceTo("write");
-  emit({ type: "note", text: "Writing the guide from what was found…" });
+  const writer = await pickResponsiveModel(cfg, { fullOnly: true });
+  emit({ type: "note", text: `Writing the guide from what was found${writer ? ` (${writer})` : ""}…` });
   const evidence = [...sourceIds.entries()]
     .map(([key, id]) => {
       const p = fetched.get(key)!;
@@ -174,17 +193,23 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
   const writeMessages: ChatMessage[] = [
     {
       role: "system",
-      content: `You write OAuth app setup guides for developers building AI agents. Output a single JSON object that matches this TypeScript type exactly:\n${GUIDE_TYPE}\n\n${RULES}\n\nOnly cite source ids that appear in the evidence below. Quotes must be copied character-for-character from the source text shown.`,
+      content: `You write OAuth app setup guides for developers building AI agents. Output a single JSON object that matches this TypeScript type exactly:\n${GUIDE_TYPE}\n\n${RULES}\n\nOnly cite source ids that appear in the evidence below. Quotes must be copied character-for-character from the source text shown.
+
+Completeness (a developer must be able to follow this without other docs):
+- 6-12 steps covering: developer account/sign-in, creating the app, redirect URIs, scopes, credentials and secret storage, implementing the authorization-code flow (PKCE, state, token exchange, refresh), testing with a real account, and any publishing/review/marketplace/verification step. Each step has 2-6 concrete instructions using the provider's UI labels.
+- 3-6 blockers a developer is likely to hit (redirect URI mismatch, scope or plan restrictions, admin approval, review rejection, rate limits, token expiry), each with symptom and fix.
+- 2-4 paths, 4-8 requirements, 3-6 agentCan, 3-6 youMust, 3-5 nextActions, and honest uncertainties (at least 2: what could not be confirmed).`,
     },
     {
       role: "user",
-      content: `App investigated: ${query}\n\nResearch notes:\n${notes || "(none)"}\n\nProbe results:\n${probeText}\n\nSource pages (excerpts):\n${evidence || "(no pages could be read)"}\n\nWrite the guide JSON now.`,
+      content: `App investigated: ${query}\n\nResearch notes:\n${notes || "(none)"}\n\nProbe results:\n${probeText}\n\nSearch snippets (NOT sources: never quote them; facts known only from these must be marked inferred or unverified):\n${snippets.slice(0, 30).join("\n") || "(none)"}\n\nSource pages (excerpts):\n${evidence || "(no pages could be read)"}\n\nWrite the guide JSON now.`,
     },
   ];
 
   let draft: GuideDraft | null = null;
   for (let attempt = 0; attempt < 3 && !draft; attempt++) {
-    const { message, finishReason } = await chat(cfg, { messages: writeMessages, json: true, maxTokens: 24000 }, { signal, onWait });
+    const { message, finishReason, model: m } = await chat(cfg, { messages: writeMessages, json: true, maxTokens: 32000, effort: "medium", timeoutMs: 150_000, avoidLite: true }, llmOpts);
+    usedModel = m;
     const text = typeof message.content === "string" ? message.content : "";
     let issues: string;
     try {
@@ -202,5 +227,5 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
   }
   if (!draft) throw new Error("The model could not produce a valid guide after 3 attempts.");
 
-  return finalizeGuide({ draft, query, model: `${cfg.label} ${model}`, startedAt, searches, fetched, probes, tracker, sourceIdsForFetched: sourceIds });
+  return finalizeGuide({ draft, query, model: `${cfg.label} ${usedModel}`, startedAt, searches, fetched, probes, tracker, sourceIdsForFetched: sourceIds });
 }

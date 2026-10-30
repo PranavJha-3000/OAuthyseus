@@ -96,6 +96,7 @@ npm run dev                  # http://localhost:3000
   5. `ANTHROPIC_API_KEY`
 - Groq's free tier allows only a few thousand tokens a minute, and reading docs pages exceeds that, so Gemini works best.
 - To check the tools without any model: `npx tsx scripts/smoke-tools.mts "Calendly"`.
+- To run an investigation from the terminal, with a timestamped log, and save the guide: `npx tsx --env-file=.env scripts/investigate.mts "Calendly"`.
 - To deploy: on Vercel, set your model key. For shareable generated guides, also set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (the Upstash free tier is enough). Without them, generated guides go to `/tmp` and don't survive a cold start.
 - To re-verify the library: `npx tsx scripts/verify-guides.ts`.
 - To install the extension: open `chrome://extensions`, turn on Developer mode, click **Load unpacked** and choose `extension/`. The bridge only runs on `localhost` and `*.vercel.app`.
@@ -106,5 +107,13 @@ npm run dev                  # http://localhost:3000
 - **Console labels:** taken from the docs. The label matcher is heuristic; the screenshot fallback covers renamed labels, but only after you press "Point for me".
 - **Run time:** a live investigation takes 2–4 minutes and runs inside one serverless function (300 s cap on Vercel). Free-tier rate-limit waits and providers with sprawling docs can push a run past that cap.
 - **Keyless search** scrapes DuckDuckGo Lite and Bing, which can throttle or change their markup. A free Tavily or Brave key makes search dependable.
+- **Free-tier capacity is the real constraint.** In testing, the newest Gemini Flash models were often overloaded: they answered 503, or held the connection without replying. The agent handles this:
+  - It pings every candidate model at the start and uses the best one that responds.
+  - It puts a failing or rate-limited model on cooldown and moves to the next immediately, since quotas are per model.
+  - It keeps Flash-Lite out of the writing step.
+
+  Even so, a day of heavy testing used up the daily free quota on the full Flash models. When that happens, research falls back to Flash-Lite, which reads less carefully, so the guide comes out thinner.
+  - *A good run:* Calendly in 149 s, 10 of 10 quotes found verbatim.
+  - *A starved run:* Flash-Lite made 17 searches and read nothing. That is why searches are now capped until the agent reads a page.
 - **Free-tier model quality:** smaller models write weaker guides and make more quote mistakes. The grounding check catches invented quotes, but not thin research.
 - **Generated guides** are not reviewed by a person. The page says so, and the grounding check is the safety net.

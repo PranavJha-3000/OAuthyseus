@@ -149,6 +149,10 @@ export async function fetchPage(rawUrl: string): Promise<FetchedPage> {
     } catch {}
   }
   if (!page) throw new Error("page could not be loaded");
+  // Soft 404s: the server says 200 (or the reader renders the error page) but it's a not-found page.
+  if (/(^|\b)(404|page not found|couldn't find that page|could not find that page|page doesn't exist)\b/i.test(`${page.title} ${page.text.slice(0, 300)}`) && page.text.length < 4000) {
+    throw new Error(`not found ("${page.title}")`);
+  }
   return page;
 }
 

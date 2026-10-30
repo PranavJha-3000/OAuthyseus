@@ -81,7 +81,8 @@ export async function POST(req: Request) {
     } else {
       const { message } = await chat(cfg, {
         json: true,
-        maxTokens: 2000,
+        maxTokens: 6000,
+        effort: "low",
         messages: [
           {
             role: "user",
