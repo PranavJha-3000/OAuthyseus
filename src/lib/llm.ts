@@ -110,7 +110,11 @@ export async function chat(
     const now = Date.now();
     let model = c.models[c.current];
     if (!usable.includes(model) || (cooldownUntil.get(model) ?? 0) > now) {
-      const ready = usable.find((m) => (cooldownUntil.get(m) ?? 0) <= now);
+      // Prefer the requested pool; if all of it is exhausted, a weaker model that answers beats failing.
+      const ready =
+        usable.find((m) => (cooldownUntil.get(m) ?? 0) <= now) ??
+        (body.avoidLite ? c.models.find((m) => (cooldownUntil.get(m) ?? 0) <= now) : undefined);
+      if (ready && !usable.includes(ready) && ready !== model) opts.onSwitch?.(model, ready, "out of quota, like every full model");
       if (!ready) {
         const soonest = Math.min(...usable.map((m) => cooldownUntil.get(m) ?? 0));
         const wait = Math.max(1, Math.ceil((soonest - now) / 1000));
@@ -120,7 +124,7 @@ export async function chat(
         waited += wait;
         continue;
       }
-      if (ready !== model) opts.onSwitch?.(model, ready, (cooldownUntil.get(model) ?? 0) > now ? "cooling down" : "not suited to this step");
+      if (ready && ready !== model && usable.includes(ready)) opts.onSwitch?.(model, ready, (cooldownUntil.get(model) ?? 0) > now ? "cooling down" : "not suited to this step");
       model = ready;
       c.current = c.models.indexOf(ready);
     }
@@ -171,32 +175,33 @@ export async function chat(
 }
 
 /**
- * Ping every candidate at once and make the best-ranked responsive one current.
- * On free tiers the newest models are often overloaded; this costs one tiny request per model
- * and saves minutes of sequential timeouts.
+ * Find a responsive model before a run: try candidates in rank order and stop at the first that
+ * answers. On free tiers the newest models are often overloaded, and daily quotas are small
+ * (as low as 20 requests per model), so this spends one request in the common case.
  */
 export async function pickResponsiveModel(cfg: Extract<LlmConfig, { kind: "openai" }>, opts: { fullOnly?: boolean } = {}): Promise<string | null> {
   const c = await candidates(cfg);
   if (c.models.length === 1) return c.models[0];
-  const eligible = c.models.map((m, i) => ({ m, i })).filter(({ m }) => (!opts.fullOnly || !/lite/.test(m)) && (cooldownUntil.get(m) ?? 0) <= Date.now());
-  const results = await Promise.all(
-    eligible.map(async ({ m, i }) => {
-      try {
-        const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
-          body: JSON.stringify({ model: m, messages: [{ role: "user", content: "ok" }], max_tokens: 16, ...(cfg.label === "Gemini" ? { reasoning_effort: "low" } : {}) }),
-          signal: AbortSignal.timeout(12_000),
-        });
-        if (!res.ok) cooldownUntil.set(m, Date.now() + (res.status === 429 ? 30_000 : 90_000));
-        return res.ok ? i : null;
-      } catch {
-        return null;
+  for (let i = 0; i < c.models.length; i++) {
+    const m = c.models[i];
+    if ((opts.fullOnly && /lite/.test(m)) || (cooldownUntil.get(m) ?? 0) > Date.now()) continue;
+    try {
+      const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+        body: JSON.stringify({ model: m, messages: [{ role: "user", content: "ok" }], max_tokens: 16, ...(cfg.label === "Gemini" ? { reasoning_effort: "low" } : {}) }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok) {
+        c.current = i;
+        return m;
       }
-    }),
-  );
-  const best = results.filter((i): i is number => i !== null).sort((a, b) => a - b)[0];
-  if (best === undefined) return null;
-  c.current = best;
-  return c.models[best];
+      const text = await res.text();
+      const hinted = Number(text.match(/"retryDelay":\s*"(\d+)s"/)?.[1]);
+      cooldownUntil.set(m, Date.now() + (res.status === 429 ? Math.min(3600, hinted || 30) : 90) * 1000);
+    } catch {
+      cooldownUntil.set(m, Date.now() + 90_000);
+    }
+  }
+  return null;
 }

@@ -12,6 +12,8 @@ import { createTracker, finalizeGuide, normUrl, RULES, type Emit, type FetchedTe
 
 type OpenCfg = Extract<LlmConfig, { kind: "openai" }>;
 
+const REVIEW_PAGE = /(review|marketplace|directory|listing|distribut|verif|publish|partner|rate.?limit|terms|policy|guideline|certif|security)/i;
+
 const RESEARCH_SYSTEM = `You are OAuthseus, a research agent that finds out what it really takes for a developer to register an OAuth app with a provider and get it approved so that their end users can connect their accounts to the developer's AI agent.
 
 Investigate the app you are given from scratch using the tools. Work efficiently but thoroughly: about 4-6 searches and 5-8 page reads (read at least 4 official pages before finishing: app registration, scopes/permissions, tokens/refresh, and any app review, marketplace, partner or publishing page). The developer is watching live.
@@ -84,6 +86,7 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
   const sourceIds = new Map<string, string>(); // normUrl -> s#
   const probes: Array<ProbeResult & { id: string }> = [];
   const snippets: string[] = [];
+  const seenUrls = new Set<string>();
   let usedModel = model;
   const llmOpts = {
     signal,
@@ -104,6 +107,7 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
       const { engine, results } = await webSearch(q);
       if (results.length === 0) return "No results (search engines unavailable). Try fetch_page on a likely docs URL.";
       results.slice(0, 5).forEach((r) => snippets.push(`- ${r.title} (${r.url}): ${r.snippet}`));
+      results.forEach((r) => seenUrls.add(r.url));
       return `Results (${engine}):\n` + results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`).join("\n");
     }
     if (name === "fetch_page") {
@@ -119,7 +123,14 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
         const focus = Array.isArray(args.focus) ? (args.focus as unknown[]).map(String) : undefined;
         return `Source id: ${sourceIds.get(key)}\nTitle: ${page.title}\nURL: ${page.url}\n\n${excerpt(page, focus)}`;
       } catch (err) {
-        return `Could not read ${url}: ${(err as Error).message}`;
+        // Smaller models guess URLs; point them back at real ones from their own search results.
+        let host = "";
+        try {
+          host = new URL(url).host;
+        } catch {}
+        const known = [...seenUrls].filter((u) => u.includes(host) && u !== url).slice(0, 6);
+        const hint = known.length ? ` Real URLs on this site from your searches:\n${known.join("\n")}` : " Use a URL from your search results instead of guessing.";
+        return `Could not read ${url}: ${(err as Error).message}.${hint}`;
       }
     }
     if (name === "probe_console" || name === "probe_oidc_discovery" || name === "probe_authorize") {
@@ -149,6 +160,7 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
     },
   ];
   let notes = "";
+  let sentBack = false;
   for (let turn = 0; turn < 12; turn++) {
     if (signal?.aborted) throw new Error("Investigation cancelled.");
     if (turn === 8) messages.push({ role: "user", content: "Time is nearly up. Run any probes you still need, then call finish_research with your notes." });
@@ -164,14 +176,28 @@ export async function runOpenInvestigation(cfg: OpenCfg, query: string, emit: Em
       notes = typeof message.content === "string" ? message.content : "";
       break;
     }
-    const finish = calls.find((c) => c.function.name === "finish_research");
+    let finish = calls.find((c) => c.function.name === "finish_research");
+    // The launch gate (review, marketplace, limits) is what developers most need; don't let the
+    // agent finish without having read about it at least once.
+    const readReview = [...fetched.values()].some((p) => REVIEW_PAGE.test(`${p.url} ${p.title}`));
+    const sendBack = finish && !readReview && !sentBack && turn < 10;
+    if (sendBack) {
+      sentBack = true;
+      emit({ type: "note", text: "No page about review or distribution limits has been read yet; sending the agent back to find one." });
+    }
     const results = await Promise.all(
       calls.map(async (c) => {
-        const content = c.function.name === "finish_research" ? "Noted." : await runTool(c.function.name, parseArgs(c.function.arguments));
+        const content =
+          c.function.name === "finish_research"
+            ? sendBack
+              ? "Not yet: you have not read any official page about app review, marketplace/directory listing, distribution, verification, rate limits or terms for third-party apps. Search for and fetch one, then call finish_research again."
+              : "Noted."
+            : await runTool(c.function.name, parseArgs(c.function.arguments));
         return { role: "tool" as const, tool_call_id: c.id, content };
       }),
     );
     messages.push(...results);
+    if (sendBack) finish = undefined;
     if (finish) {
       notes = String(parseArgs(finish.function.arguments).notes ?? "");
       break;

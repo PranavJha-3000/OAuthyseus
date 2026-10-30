@@ -72,6 +72,17 @@ Every step in a guide says who does it:
 
 The pointer extension follows the same rule. It highlights and explains, but never types passwords, submits forms or accepts terms.
 
+### How the live agent did ([`docs/agent-eval.md`](docs/agent-eval.md))
+
+I ran the agent on Slack, which has a curated guide, and on Calendly, which is new. All runs used a free Gemini key, mostly on Flash-Lite after the full models' daily quota ran out.
+
+- **What it gets right:** the registration mechanics, live endpoint probes, and honest labels. Every invented or wrong quote it produced was caught and downgraded.
+- **What it misses:** facts hidden in changelogs and marketplace guidelines. On Slack it missed the 2025 rate limit for non-Marketplace apps and the 10-install minimum that the curated guide has.
+- **What the runs changed:**
+  - Approval waits now count as *documented* only when a verified quote contains a duration. The agent once gave "1–7 days" while listing review time as unknown.
+  - The agent has to read at least one page about review or distribution before it can finish.
+  - Failed fetches point it back to real URLs from its own searches.
+
 ## Key decisions
 
 - **Depth over breadth.** I chose seven guides that are actually checked over a hundred guesses. The live agent covers the long tail, in the same format and with the same honesty rules.

@@ -112,6 +112,20 @@ export function finalizeGuide(args: {
   const guide: Guide = { schemaVersion: 1, ...draft, slug: id, origin: "agent", updatedAt: today, sources: [...sources, ...probeSources], verificationLog: [] };
 
   const grounding = ground(guide, fetched);
+
+  // Approval waits are the number developers plan around. Unless a verified quote backs one,
+  // label it as the agent's estimate.
+  const flagWait = (wait: unknown, ev: { level: string; note?: string; quoteCheck?: string }) => {
+    // A real quote that says "review is required" doesn't establish how long review takes.
+    const quoteGivesTime = /\d|\b(day|week|month|hour)s?\b/i.test((ev as { quote?: string }).quote ?? "");
+    if (wait && !(ev.level === "documented" && ev.quoteCheck === "found" && quoteGivesTime) && ev.level !== "unverified") {
+      ev.level = "unverified";
+      ev.note = `No published timeline was verified; this wait is the agent's estimate. ${ev.note ?? ""}`.trim();
+      grounding.downgraded++;
+    }
+  };
+  flagWait(guide.effort.approvalWait, guide.effort.evidence);
+  guide.paths.forEach((p) => flagWait(p.approvalWait, p.evidence));
   tracker.set("ground", grounding.downgraded > 0 ? "partial" : "done", `${grounding.quotesFound} of ${grounding.quotesChecked} quotes found verbatim; ${grounding.downgraded} claims downgraded.`);
 
   guide.verificationLog = [
