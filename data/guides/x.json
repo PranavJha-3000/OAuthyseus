@@ -1,0 +1,1051 @@
+{
+  "schemaVersion": 1,
+  "slug": "x",
+  "name": "X (formerly Twitter) API, OAuth 2.0 user context",
+  "website": "https://x.com",
+  "category": "Social",
+  "brandColor": "#000000",
+  "origin": "curated",
+  "updatedAt": "2026-10-30",
+  "summary": "Registering an X app takes about 30 minutes with no human review. You sign in at console.x.com, accept the Developer Agreement, describe your use case, create an app, and enable OAuth 2.0 with PKCE. The hard part is price and policy, not approval. Since February 2026 the X API is pay-per-use only: there is no free read tier, every read and write is billed from prepaid credits (post read $0.005, post create $0.015, post with a URL $0.20), and the Developer Agreement forbids using X content to train foundation or frontier models.",
+  "verdict": {
+    "difficulty": "gated",
+    "headline": "About 30 minutes to a working OAuth app; gated by prepaid pay-per-use credits and strict AI and automation policy rather than review",
+    "rationale": "You can register an app instantly, but you cannot make useful API calls until you buy credits. All reads and writes are metered per resource or per request, and pay-per-use is capped at 3 million post reads per month, beyond which you need an Enterprise contract. The Developer Agreement forbids fine-tuning or training foundation or frontier models on X content. The Developer Policy makes your stated use case binding and requires write automation to follow the Automation Rules. Agents that auto-reply, auto-post links, or bulk-read timelines therefore hit both cost and policy walls.",
+    "evidence": {
+      "level": "documented",
+      "sources": [
+        "s1",
+        "s9",
+        "s10"
+      ],
+      "quote": "The X API uses pay-per-usage pricing with no subscriptions.",
+      "note": "Pricing page (s1) read 2026-10-30. The AI-training ban is clause (k) of the Developer Agreement (s9, Last Updated April 27, 2026).",
+      "quoteCheck": "found"
+    }
+  },
+  "effort": {
+    "activeTime": {
+      "min": 30,
+      "max": 90,
+      "unit": "minutes"
+    },
+    "approvalRequired": "conditional",
+    "approvalWait": null,
+    "approvalNote": "Standard pay-per-use access needs no manual review: credentials are generated when you create the app, and access works once credits are purchased. Approval is needed only for Enterprise volume (above the 3M post-read monthly cap) or special access such as Ads API, through X sales forms. X publishes no timeline for those. X may also review or enforce against your use case at any time after the fact, because the use case description is binding.",
+    "evidence": {
+      "level": "documented",
+      "sources": [
+        "s4",
+        "s1"
+      ],
+      "quote": "Provide a name, description, and use case for your app.",
+      "note": "The Getting Access flow (s4) lists sign-up, agreement, profile, app creation and credentials, with no review step. The Enterprise wait is not published (see uncertainties).",
+      "quoteCheck": "found"
+    }
+  },
+  "paths": [
+    {
+      "id": "testing",
+      "name": "Testing / own-account prototype on pay-per-use credits",
+      "when": "You are building the agent and testing OAuth with your own X account or a few test users. Spend is a few dollars, and Owned Reads (your own posts, followers and bookmarks) cost $0.001 each.",
+      "difficulty": "moderate",
+      "activeTime": {
+        "min": 30,
+        "max": 60,
+        "unit": "minutes"
+      },
+      "approvalWait": null,
+      "whatChanges": "There is no longer a free tier for new developers, so you must save a credit or debit card and buy credits before any call succeeds. New accounts get a one-time $20 in free credits after the first credit purchase (since October 13, 2026, adding a card alone no longer qualifies), plus a match of the first auto-recharge up to $50. Promotional credits expire after 3 months. Set a spending limit.",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s2",
+          "s1"
+        ],
+        "quote": "Adding a card on its own no longer qualifies (updated October 13, 2026).",
+        "note": "The free-tier discontinuation for new sign-ups is reported by community sources (s14). Official docs simply list no free tier.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "pay-per-use-production",
+      "name": "Production agent for end users on pay-per-use",
+      "when": "Your end users connect their X accounts and the agent reads timelines or mentions and posts on their behalf, below 3M post reads per month.",
+      "difficulty": "gated",
+      "activeTime": {
+        "min": 2,
+        "max": 6,
+        "unit": "hours"
+      },
+      "approvalWait": null,
+      "whatChanges": "There is still no review, but you need production callback URLs (https), a funded balance with auto-recharge, spending limits, and cost modelling. Each post read is $0.005, each user read $0.010, each post create $0.015, and a post containing a URL is $0.20. Write features must comply with the Automation Rules: explicit consent before automated replies or DMs, no bulk or duplicate posting, and bot accounts labelled. Each end user is billed against your developer account, not theirs.",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s1",
+          "s10"
+        ],
+        "quote": "Prices are subject to change.",
+        "note": "Prices copied from the pricing tables on docs.x.com on 2026-10-30. Verify live rates in the Developer Console.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "enterprise",
+      "name": "Enterprise (high volume or special access)",
+      "when": "You need more than 3 million post reads per month, team management, or negotiated terms.",
+      "difficulty": "gated",
+      "activeTime": {
+        "min": 2,
+        "max": 8,
+        "unit": "hours"
+      },
+      "approvalWait": {
+        "min": 2,
+        "max": 8,
+        "unit": "weeks"
+      },
+      "whatChanges": "You submit the Enterprise API interest form and go through a sales and contract process. Pricing is custom and not published. Team roles (Administrator, Developer) are available only on Enterprise accounts.",
+      "evidence": {
+        "level": "unverified",
+        "sources": [
+          "s1",
+          "s3"
+        ],
+        "quote": "If you need higher volume, upgrade to an",
+        "note": "That Enterprise exists and is the route above the cap is documented. The 2-8 week wait is not published by X; it is an estimate for a sales-led contract process and should be treated as unverified.",
+        "quoteCheck": "found"
+      }
+    }
+  ],
+  "appModel": {
+    "providerTerm": "App in the X Developer Console (console.x.com)",
+    "explanation": "One X app represents your product. Its OAuth 2.0 Client ID (and Client Secret for confidential clients) drives the Authorization Code Flow with PKCE at https://x.com/i/oauth2/authorize. Each end user who connects creates one user-context grant and token set bound to that app. All API usage by all of your users is billed to your developer account's credit balance. The Developer Policy forbids registering multiple apps for the same or overlapping use case, so do not create one app per customer. There is no dynamic client registration.",
+    "tokenNotes": "Access tokens last 2 hours. You get a refresh token only if you request the offline.access scope; without it, users must re-authorize every 2 hours. Authorization codes must be exchanged within 30 seconds. Confidential clients (Web App, Automated App or Bot) authenticate to /2/oauth2/token with HTTP Basic (client_id:client_secret). Public clients (Native App, Single Page App) send client_id in the body and use PKCE only. X keeps a single live grant per (app, user), so the same user authorizing the same app from a second client revokes the first client's tokens. OAuth 2.0 works only with API v2. Existing OAuth 1.0a user tokens can be converted with the token-exchange grant.",
+    "evidence": {
+      "level": "documented",
+      "sources": [
+        "s6",
+        "s13",
+        "s12"
+      ],
+      "quote": "will only stay valid for two hours",
+      "note": "The single-grant-per-(app, user) behaviour is stated in the X Ads MCP doc (s13). No dynamic client registration is stated in the X MCP doc (s12).",
+      "quoteCheck": "found"
+    }
+  },
+  "requirements": [
+    {
+      "item": "X account and Developer Agreement acceptance",
+      "detail": "Sign in at console.x.com with an X account (minimum age 13 under the X Terms) and accept the Developer Agreement and Policy. Use an account your company controls, not a personal one, because the app and billing live under it.",
+      "neededFor": [
+        "testing",
+        "pay-per-use-production",
+        "enterprise"
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s4"
+        ],
+        "quote": "Review and accept the Developer Agreement and Policy.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "item": "Use case description",
+      "detail": "Describe what your app does with X data. This description is binding: substantive deviations can lead to suspension, and you must notify X and get approval before using X content for a new purpose.",
+      "neededFor": [
+        "testing",
+        "pay-per-use-production",
+        "enterprise"
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s10"
+        ],
+        "quote": "Your use case description is binding on you",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "item": "Payment card and prepaid credits",
+      "detail": "A credit or debit card (prepaid cards do not earn incentives). API calls are blocked when the balance is zero or negative. Configure auto-recharge (minimum $5) and a per-billing-cycle spending limit.",
+      "neededFor": [
+        "testing",
+        "pay-per-use-production"
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s1"
+        ],
+        "quote": "Purchase credits upfront in the Developer Console.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "item": "Callback URL(s) registered exactly",
+      "detail": "Up to 10 callback URLs per app. They must match exactly, including the trailing slash, and use https in production. For local development the apps doc says to use http://127.0.0.1 rather than localhost (but see the contradiction in the verification log).",
+      "neededFor": [
+        "testing",
+        "pay-per-use-production",
+        "enterprise"
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s5"
+        ],
+        "quote": "URLs must match exactly (including trailing slashes)",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "item": "Website URL",
+      "detail": "The app's authentication settings require a Website URL alongside the callback URI. Use your product's homepage.",
+      "neededFor": [
+        "testing",
+        "pay-per-use-production",
+        "enterprise"
+      ],
+      "evidence": {
+        "level": "inferred",
+        "sources": [
+          "s13"
+        ],
+        "note": "X's Ads MCP setup lists Website URL as a field in app settings (s13). That it is mandatory comes from the legacy portal and third-party guides; the current docs do not state it."
+      }
+    },
+    {
+      "item": "Automation Rules compliance for write actions",
+      "detail": "Posting, following, liking or DMing on users' behalf must follow the Automation Rules. That means explicit consent before automated replies or DMs, honouring opt-outs, no bulk or aggressive actions, and no identical content across accounts. Bot accounts must disclose they are bots and who runs them.",
+      "neededFor": [
+        "pay-per-use-production",
+        "enterprise"
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s10",
+          "s16"
+        ],
+        "quote": "Always get explicit consent before sending people",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "item": "No model training on X content",
+      "detail": "Clause (k) of the Developer Agreement prohibits using the X API or X Content to fine-tune or train a foundation or frontier model. An agent may read and act on content at inference time, but must not pipe it into training datasets.",
+      "neededFor": [
+        "testing",
+        "pay-per-use-production",
+        "enterprise"
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s9"
+        ],
+        "quote": "X Content to fine-tune or train a foundation or frontier model",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "item": "Enterprise contract",
+      "detail": "Required for more than 3M post reads per monthly billing cycle, or for Enterprise-only features such as team management.",
+      "neededFor": [
+        "enterprise"
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s1"
+        ],
+        "quote": "If you need higher volume, upgrade to an",
+        "quoteCheck": "found"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "signup",
+      "title": "Sign in to the Developer Console and accept the Developer Agreement",
+      "actor": "you",
+      "actorNote": "Requires your X login and a legal acceptance of the Developer Agreement and Policy, which an agent must not do for you.",
+      "duration": {
+        "min": 5,
+        "max": 15,
+        "unit": "minutes"
+      },
+      "pathIds": [],
+      "instructions": [
+        "Go to https://console.x.com and sign in with the X account that should own the app (preferably a company account).",
+        "Read the Developer Agreement and Developer Policy. Pay attention to clause (k), the ban on training models on X content, and the Automation Rules.",
+        "Accept the Developer Agreement and Policy.",
+        "Complete the profile by describing how you will use the API. Be specific: say that end users connect their own accounts through OAuth 2.0 and what the agent reads and writes. This description is binding."
+      ],
+      "values": [
+        {
+          "field": "Use case description",
+          "value": "AI assistant that lets each user connect their own X account via OAuth 2.0 to read their timeline/mentions and draft or publish posts they approve. No X content is used for model training; no automated replies without explicit consent.",
+          "note": "Adapt to what your agent actually does. Deviating later can trigger enforcement."
+        }
+      ],
+      "links": [
+        {
+          "label": "Getting Access",
+          "url": "https://docs.x.com/x-api/getting-started/getting-access"
+        },
+        {
+          "label": "Developer Agreement",
+          "url": "https://docs.x.com/developer-terms/agreement"
+        },
+        {
+          "label": "Developer Policy",
+          "url": "https://docs.x.com/developer-terms/policy"
+        }
+      ],
+      "pointer": {
+        "urlPattern": "^https://(console\\.x\\.com|developer\\.x\\.com/en/portal)",
+        "startUrl": "https://console.x.com",
+        "targets": [
+          {
+            "text": "Developer Agreement",
+            "kind": "link",
+            "hint": "Read the agreement before accepting; clause (k) bans training models on X content."
+          }
+        ]
+      },
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s4"
+        ],
+        "quote": "Review and accept the Developer Agreement and Policy.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "billing",
+      "title": "Add a payment card, buy credits, and set a spending limit",
+      "actor": "you",
+      "actorNote": "Entering payment details and purchasing credits must be done by a human.",
+      "duration": {
+        "min": 5,
+        "max": 15,
+        "unit": "minutes"
+      },
+      "pathIds": [
+        "testing",
+        "pay-per-use-production"
+      ],
+      "instructions": [
+        "In the Developer Console open Billing and use Billing information, then Add payment method, to save a credit or debit card. Prepaid cards do not earn the incentive.",
+        "Buy a small amount of credits (for example $5-$10). The first purchase with your first eligible card grants a one-time $20 free credit, which expires 3 months after grant.",
+        "Set a Spending limit per billing cycle so a runaway agent cannot drain the balance.",
+        "Optionally enable auto-recharge (Recharge amount and Trigger threshold). The first successful auto-recharge is matched up to $50. Auto-recharge fires at most once per 5 minutes and is paused at zero or negative balance.",
+        "Check current per-endpoint rates in the console. Docs list post read $0.005, user read $0.010, post create $0.015, post create with URL $0.200, and Owned Reads $0.001 (as of 2026-10-30)."
+      ],
+      "links": [
+        {
+          "label": "Pricing and credits",
+          "url": "https://docs.x.com/x-api/getting-started/pricing"
+        },
+        {
+          "label": "Free credit incentives",
+          "url": "https://docs.x.com/x-api/getting-started/free-credits"
+        }
+      ],
+      "pointer": {
+        "urlPattern": "^https://console\\.x\\.com",
+        "startUrl": "https://console.x.com",
+        "targets": [
+          {
+            "text": "Billing",
+            "kind": "menu",
+            "hint": "Billing section holds Credits, Payments and Billing information."
+          },
+          {
+            "text": "Add payment method",
+            "kind": "button",
+            "hint": "Save a credit/debit card (not prepaid) to qualify for the $20 incentive after your first purchase."
+          },
+          {
+            "text": "Spending limit",
+            "kind": "field",
+            "hint": "Cap spend per billing cycle while testing."
+          }
+        ]
+      },
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s2",
+          "s1"
+        ],
+        "quote": "Adding a card on its own no longer qualifies (updated October 13, 2026).",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "create-app",
+      "title": "Create the app",
+      "actor": "you",
+      "actorNote": "Needs your authenticated console session. An agent can draft the name and description.",
+      "duration": {
+        "min": 3,
+        "max": 10,
+        "unit": "minutes"
+      },
+      "pathIds": [],
+      "instructions": [
+        "From the Developer Console dashboard click New App (some doc pages call it Create App).",
+        "Enter the app name, description and use case. Create one app per use case; do not create one app per customer, which violates the policy against multiple apps for one use case.",
+        "Credentials shown at creation (API Key and Secret, Bearer Token) are displayed only once. Copy them into a secret manager immediately."
+      ],
+      "values": [
+        {
+          "field": "App name",
+          "value": "<YourProduct> Agent",
+          "note": "Shown to users on the X consent screen."
+        }
+      ],
+      "links": [
+        {
+          "label": "Apps",
+          "url": "https://docs.x.com/resources/fundamentals/developer-apps"
+        },
+        {
+          "label": "Developer Console",
+          "url": "https://docs.x.com/fundamentals/developer-portal"
+        }
+      ],
+      "pointer": {
+        "urlPattern": "^https://(console\\.x\\.com|developer\\.x\\.com/en/portal)",
+        "startUrl": "https://console.x.com",
+        "targets": [
+          {
+            "text": "New App",
+            "kind": "button",
+            "hint": "Creates the app. Docs also call this button Create App."
+          },
+          {
+            "text": "Create App",
+            "kind": "button",
+            "hint": "Alternate label for the create-app button."
+          }
+        ]
+      },
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s3"
+        ],
+        "quote": "API keys and tokens are only displayed once when generated.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "auth-settings",
+      "title": "Enable OAuth 2.0: app permissions, type of app, callback URI, website URL",
+      "actor": "you",
+      "actorNote": "Done in the authenticated console. An agent can tell you the exact values to paste.",
+      "duration": {
+        "min": 5,
+        "max": 15,
+        "unit": "minutes"
+      },
+      "pathIds": [],
+      "instructions": [
+        "Open the app's settings and find the authentication settings. On the legacy portal this was 'User authentication settings', then 'Set up' (or 'Edit').",
+        "Set App Permissions. These apply to OAuth 1.0a; OAuth 2.0 access is governed by scopes, but choose 'Read and write' (or 'Read and write and Direct message' if you need DMs) so 1.0a tokens match.",
+        "Set Type of app: 'Web App, Automated App or Bot' if your agent backend can keep a secret (confidential client, gets a Client Secret). Choose 'Native App' or 'Single page App' only for public clients (PKCE only, no secret).",
+        "Under Callback URI / Redirect URL add each exact redirect URI (max 10), for example https://app.example.com/oauth/x/callback, plus a local dev URI.",
+        "Enter the Website URL (your product homepage), and optionally organization name, terms of service and privacy policy URLs.",
+        "Save. Then open Keys and tokens and copy the OAuth 2.0 Client ID (the long string, not the numeric app ID) and, for confidential clients, the Client Secret."
+      ],
+      "values": [
+        {
+          "field": "Type of app",
+          "value": "Web App, Automated App or Bot",
+          "note": "Confidential client. Token requests use HTTP Basic client_id:client_secret; X rejects client_secret_post per its Ads MCP doc."
+        },
+        {
+          "field": "Callback URI / Redirect URL",
+          "value": "https://<your-domain>/oauth/x/callback",
+          "note": "Exact match including trailing slash."
+        },
+        {
+          "field": "Callback URI / Redirect URL (local)",
+          "value": "http://127.0.0.1:8080/callback",
+          "note": "The apps doc says to use 127.0.0.1, not localhost."
+        },
+        {
+          "field": "Website URL",
+          "value": "https://<your-domain>"
+        }
+      ],
+      "links": [
+        {
+          "label": "Apps: OAuth 2.0 app types and callback URLs",
+          "url": "https://docs.x.com/resources/fundamentals/developer-apps"
+        },
+        {
+          "label": "OAuth 2.0 Authorization Code Flow with PKCE",
+          "url": "https://docs.x.com/resources/fundamentals/authentication/oauth-2-0/authorization-code"
+        }
+      ],
+      "pointer": {
+        "urlPattern": "^https://(console\\.x\\.com|developer\\.x\\.com/en/portal)",
+        "startUrl": "https://console.x.com",
+        "targets": [
+          {
+            "text": "User authentication settings",
+            "kind": "any",
+            "hint": "Legacy-portal label for the OAuth settings block; may differ in the new console."
+          },
+          {
+            "text": "Set up",
+            "kind": "button",
+            "hint": "Opens the authentication settings form (legacy portal)."
+          },
+          {
+            "text": "App Permissions",
+            "kind": "field",
+            "hint": "OAuth 1.0a permission level; pick Read and write."
+          },
+          {
+            "text": "Type of app",
+            "kind": "field",
+            "hint": "Pick Web App, Automated App or Bot for a server-side agent."
+          },
+          {
+            "text": "Callback URI / Redirect URL",
+            "kind": "field",
+            "hint": "Paste exact redirect URIs (max 10)."
+          },
+          {
+            "text": "Website URL",
+            "kind": "field",
+            "hint": "Your product homepage."
+          },
+          {
+            "text": "Keys and tokens",
+            "kind": "tab",
+            "hint": "Copy the OAuth 2.0 Client ID and Client Secret here."
+          }
+        ]
+      },
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s5",
+          "s13"
+        ],
+        "quote": "Add callback URLs to your app's allowlist in the Developer Console",
+        "note": "Field labels App Permissions / Type of app / Callback URI / Redirect URL / Website URL / Keys and tokens come from X's Ads MCP setup doc (s13). 'User authentication settings' and 'Set up' are legacy-portal labels that the current docs do not mention.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "implement-oauth",
+      "title": "Implement Authorization Code Flow with PKCE and refresh",
+      "actor": "agent",
+      "actorNote": "Pure code work an AI agent can do once Client ID, Secret and callback are in env vars.",
+      "duration": {
+        "min": 30,
+        "max": 120,
+        "unit": "minutes"
+      },
+      "pathIds": [],
+      "instructions": [
+        "Build the authorize URL https://x.com/i/oauth2/authorize with response_type=code, client_id, redirect_uri, scope (space-separated), state (up to 500 chars), code_challenge and code_challenge_method=S256.",
+        "Request minimal scopes. A typical agent needs tweet.read users.read offline.access, plus tweet.write to post, media.write to upload media, and dm.read/dm.write only if needed.",
+        "Always include offline.access. Without it no refresh token is issued and users must re-consent every 2 hours.",
+        "On callback verify state, then POST to https://api.x.com/2/oauth2/token (Content-Type application/x-www-form-urlencoded) with code, grant_type=authorization_code, redirect_uri, and code_verifier, within 30 seconds. Confidential clients send Authorization: Basic base64(client_id:client_secret); public clients send client_id in the body.",
+        "Refresh with grant_type=refresh_token and store the newly returned refresh token every time.",
+        "Call GET https://api.x.com/2/users/me to identify the connected user (75 requests per 15 min per user)."
+      ],
+      "values": [
+        {
+          "field": "scope",
+          "value": "tweet.read users.read offline.access",
+          "note": "Add tweet.write / media.write / like.write etc. only as needed."
+        },
+        {
+          "field": "token endpoint",
+          "value": "https://api.x.com/2/oauth2/token"
+        },
+        {
+          "field": "authorize endpoint",
+          "value": "https://x.com/i/oauth2/authorize"
+        }
+      ],
+      "links": [
+        {
+          "label": "OAuth 2.0 user access token guide",
+          "url": "https://docs.x.com/resources/fundamentals/authentication/oauth-2-0/user-access-token"
+        },
+        {
+          "label": "OAuth 2.0 scopes",
+          "url": "https://docs.x.com/resources/fundamentals/authentication/oauth-2-0/authorization-code"
+        }
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s6",
+          "s7"
+        ],
+        "quote": "If this scope is not passed, we will not generate a refresh token.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "test-connect",
+      "title": "Connect a test account end to end and watch costs",
+      "actor": "both",
+      "actorNote": "The agent can run the flow and API calls; a human must click Authorize on X's consent screen while logged in.",
+      "duration": {
+        "min": 10,
+        "max": 30,
+        "unit": "minutes"
+      },
+      "pathIds": [],
+      "instructions": [
+        "Open your authorize URL, log in to X as a test user, and click Authorize app.",
+        "Exchange the code, call /2/users/me, then make one read and one write call.",
+        "Check Developer Console usage. Remember a post containing a URL costs $0.20 versus $0.015 without one, and reads are charged per returned resource, deduplicated per 24-hour UTC day.",
+        "Optionally poll GET /2/usage/tweets to track daily post consumption."
+      ],
+      "links": [
+        {
+          "label": "Rate limits",
+          "url": "https://docs.x.com/x-api/fundamentals/rate-limits"
+        },
+        {
+          "label": "Pricing",
+          "url": "https://docs.x.com/x-api/getting-started/pricing"
+        }
+      ],
+      "pointer": {
+        "urlPattern": "^https://(x\\.com/i/oauth2/authorize|console\\.x\\.com)",
+        "startUrl": "https://console.x.com",
+        "targets": [
+          {
+            "text": "Authorize app",
+            "kind": "button",
+            "hint": "On X's consent screen; must be clicked by the end user."
+          }
+        ]
+      },
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s1"
+        ],
+        "quote": "Owned Reads are requests made by your own developer app for your own data",
+        "note": "The consent-button label 'Authorize app' is not stated in current docs (inferred from the X consent screen).",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "id": "production-hardening",
+      "title": "Production: compliance, bot labelling, and Enterprise if needed",
+      "actor": "both",
+      "actorNote": "The agent can implement consent gates and rate-limit handling; a human owns policy attestations, bot account settings, and any Enterprise contract.",
+      "duration": {
+        "min": 1,
+        "max": 4,
+        "unit": "hours"
+      },
+      "pathIds": [
+        "pay-per-use-production",
+        "enterprise"
+      ],
+      "instructions": [
+        "Gate all automated replies, mentions and DMs behind explicit user consent, and honour opt-outs immediately.",
+        "If the agent operates its own bot account, label it under the account's Settings > Your account > Automation and state in the bio who runs it.",
+        "Handle HTTP 429 using the x-rate-limit headers. POST /2/tweets allows 100 per 15 min per user and 10,000 per 24h per app.",
+        "Exclude all X content from any model fine-tuning or training pipelines (Developer Agreement clause (k)).",
+        "If you will exceed 3M post reads per month, submit the Enterprise API interest form."
+      ],
+      "links": [
+        {
+          "label": "Developer Policy: Spam, bots, and automation",
+          "url": "https://docs.x.com/developer-terms/policy"
+        },
+        {
+          "label": "Automation Rules",
+          "url": "https://help.x.com/en/rules-and-policies/x-automation"
+        },
+        {
+          "label": "Enterprise API interest form",
+          "url": "https://docs.x.com/forms/enterprise-api-interest"
+        }
+      ],
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s8",
+          "s10"
+        ],
+        "quote": "Exceeding limits results in a 429 error until the window resets.",
+        "quoteCheck": "found"
+      }
+    }
+  ],
+  "blockers": [
+    {
+      "title": "API calls fail with out-of-credits / payment required",
+      "symptom": "A newly created app's calls are rejected even though the credentials are valid.",
+      "fix": "Buy credits in Developer Console > Billing. There is no free read allowance for new accounts. If the balance went slightly negative, add credits to cover it. Raise the auto-recharge amount if bursts drain a top-up within 5 minutes.",
+      "severity": "high",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s1"
+        ],
+        "quote": "Monitor your credit balance regularly to avoid service interruptions.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "title": "'Callback URL not approved for this client application' (code 415)",
+      "symptom": "The authorize redirect or token exchange errors immediately.",
+      "fix": "Register the exact redirect_uri, including protocol, port and trailing slash, in the app's callback list, and percent-encode it in the query string. For local dev the apps doc recommends http://127.0.0.1 instead of localhost.",
+      "severity": "medium",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s5"
+        ],
+        "quote": "URLs must match exactly (including trailing slashes)",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "title": "Users disconnected every 2 hours",
+      "symptom": "Calls return 401 two hours after connection and there is no refresh token to use.",
+      "fix": "Add offline.access to the requested scopes and have users reconnect. Persist the rotated refresh token after each refresh.",
+      "severity": "high",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s6"
+        ],
+        "quote": "If this scope is not passed, we will not generate a refresh token.",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "title": "invalid_request on code exchange",
+      "symptom": "The token exchange fails intermittently, especially when debugging.",
+      "fix": "Exchange the auth code within 30 seconds, send the same redirect_uri and the original code_verifier, and for confidential clients use an HTTP Basic header rather than client_secret in the body.",
+      "severity": "medium",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s6"
+        ],
+        "quote": "You will have to exchange it with an access token within 30 seconds",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "title": "Tokens revoked when the same user connects through another client",
+      "symptom": "A user's earlier tokens stop working after they authorize the same app from a different client or environment.",
+      "fix": "X keeps one live grant per (app, user). Use separate apps for separate clients or environments (for example dev and prod), which docs also recommend.",
+      "severity": "medium",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s13"
+        ],
+        "quote": "X keeps a single live OAuth grant per (app, user)",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "title": "App suspended for policy violation",
+      "symptom": "Email from the X platform team and the app shows as suspended.",
+      "fix": "Common causes are automated replies or DMs without consent, duplicate or bulk posting, or deviating from the stated use case. Fix the behaviour and appeal through the Platform Help Form (help.x.com/forms/platform).",
+      "severity": "high",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s10"
+        ],
+        "quote": "Your use case description is binding on you",
+        "quoteCheck": "found"
+      }
+    },
+    {
+      "title": "Costs explode on link posts or timeline reads",
+      "symptom": "The credit balance drains far faster than expected.",
+      "fix": "A post with a URL costs $0.20 versus $0.015 without one, and reads are billed per returned resource. Cap max_results, cache (24h UTC dedup applies), use Owned Reads where possible, and set a spending limit.",
+      "severity": "medium",
+      "evidence": {
+        "level": "documented",
+        "sources": [
+          "s1"
+        ],
+        "quote": "Prices are subject to change.",
+        "quoteCheck": "found"
+      }
+    }
+  ],
+  "agentCan": [
+    "Draft the use case description and app description text",
+    "Generate the exact callback URIs, scope string and authorize URL",
+    "Implement the PKCE Authorization Code Flow, token exchange (HTTP Basic for confidential clients) and refresh-token rotation",
+    "Implement 429 handling from x-rate-limit headers and a per-user rate budget",
+    "Estimate monthly credit spend from expected reads and writes using the published per-resource prices",
+    "Build consent gates for automated replies and DMs and an opt-out list",
+    "Run end-to-end API tests after a human completes the consent click"
+  ],
+  "youMust": [
+    "Sign in to console.x.com with your X account",
+    "Accept the Developer Agreement and Policy (legal attestation)",
+    "Add a payment card, buy credits, and set spending limits and auto-recharge",
+    "Click through app creation and authentication settings in the console, and copy secrets into your vault",
+    "Authorize the app on X's consent screen as a test user",
+    "Configure the bot account's Automation label if you run a bot account",
+    "Negotiate any Enterprise contract"
+  ],
+  "nextActions": [
+    "Estimate your agent's monthly reads and writes and price them with the published rates (post read $0.005, post create $0.015, post with URL $0.20) before committing",
+    "Sign in at console.x.com, accept the Developer Agreement, and write a precise use case description",
+    "Add a card, buy a small credit pack, and set a spending limit",
+    "Create one app, choose Type of app 'Web App, Automated App or Bot', and register exact callback URIs including http://127.0.0.1 for local dev",
+    "Implement PKCE with scopes tweet.read users.read offline.access (plus tweet.write if posting) and test with your own account"
+  ],
+  "uncertainties": [
+    "The exact current console labels for OAuth settings are uncertain. 'User authentication settings' and 'Set up' are legacy developer-portal labels, while current docs mention only App Permissions / Type of app / Callback URI / Redirect URL / Website URL / Keys and tokens. Not verified by a console walk-through.",
+    "Whether Website URL is still mandatory in the new console is not stated in current official docs.",
+    "Free tier: official docs list no free tier. The date it closed to new sign-ups (reported as February 6, 2026) and the treatment of legacy Basic/Pro subscribers (reported migrations around June 1 and September 1, 2026) come from community sources only.",
+    "The Developer Agreement (Last Updated April 27, 2026) still contains monthly 'Subscription Terms' language that does not match the pay-per-use docs.",
+    "Refresh-token lifetime and whether refresh tokens are single-use (rotating) are not documented. Community reports say they rotate; treat as unverified and always store the latest.",
+    "Enterprise onboarding time is not published. The 2-8 week range is an unverified estimate.",
+    "The 'Post: Create (summoned)' price ($0.010) is listed, but the qualifying conditions were not found in the pages reviewed.",
+    "The Automation Rules page on help.x.com could not be fetched directly (bot protection). Its requirements are cited via the Developer Policy summary.",
+    "Prices were read from docs.x.com on 2026-10-30 and X states they are subject to change. The Developer Console is the source of truth."
+  ],
+  "verificationLog": [
+    {
+      "date": "2026-10-30",
+      "check": "Current access model and whether the Free/Basic/Pro tiers still exist",
+      "method": "doc-review",
+      "result": "corrected",
+      "detail": "Commonly repeated advice (Free = write-only around 500 posts/month, Basic $200/month for reads, Pro $5,000/month) is outdated. docs.x.com/x-api/getting-started/pricing now describes only pay-per-usage credits plus Enterprise: no subscriptions, per-resource reads and per-request writes, capped at 3M post reads per monthly billing cycle. The legacy portal sign-up path (developer.x.com/en/portal/petition/essential/basic-info) still appears in older doc pages."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Developer console location",
+      "method": "doc-review",
+      "result": "corrected",
+      "detail": "Docs now send developers to console.x.com (the Developer Console), not developer.x.com/en/portal/dashboard. Some older doc pages still link the old portal. The pointer urlPattern covers both."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Free credit incentive for new accounts",
+      "method": "doc-review",
+      "result": "corrected",
+      "detail": "The $20 card-add credit is now granted only after the first credit purchase (changed October 13, 2026). Adding a card alone no longer qualifies. Incentive credits expire 3 months after grant and are spent first."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Access token lifetime and refresh tokens",
+      "method": "doc-review",
+      "result": "confirmed",
+      "detail": "Access tokens from the PKCE flow are valid for two hours. A refresh token is issued only with the offline.access scope. Auth codes expire after 30 seconds."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Localhost vs 127.0.0.1 for local callback URLs",
+      "method": "doc-review",
+      "result": "corrected",
+      "detail": "The Apps doc says local development should use http://127.0.0.1, not localhost. However, X's own MCP docs register http://localhost:8080/callback for the xurl bridge and Claude Code. The docs contradict each other; 127.0.0.1 is the safer documented choice."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "AI/model-training restriction in Developer Agreement",
+      "method": "doc-review",
+      "result": "confirmed",
+      "detail": "Developer Agreement (Last Updated April 27, 2026), Section restrictions clause (k), forbids using the X API or X Content to fine-tune or train a foundation or frontier model."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "One live grant per (app, user)",
+      "method": "doc-review",
+      "result": "confirmed",
+      "detail": "The X Ads MCP doc states that signing in from a second client revokes the first client's tokens for the same app and user. This is rarely mentioned in OAuth guides and matters for agents with multiple clients."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Dynamic client registration for MCP-style agents",
+      "method": "doc-review",
+      "result": "confirmed",
+      "detail": "The X MCP doc says there is no dynamic client registration. You must create your own developer app and register its callback."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Rate limits for key endpoints",
+      "method": "doc-review",
+      "result": "confirmed",
+      "detail": "POST /2/tweets: 10,000/24h per app, 100/15min per user. GET /2/users/me: 75/15min per user. GET /2/tweets/search/recent: 450/15min per app, 300/15min per user."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Automated: developer console (https://console.x.com/)",
+      "method": "http-probe",
+      "result": "confirmed",
+      "detail": "Loaded: \"Developer Console\"."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Automated: authorize endpoint with a fake client_id (https://x.com/i/oauth2/authorize)",
+      "method": "http-probe",
+      "result": "confirmed",
+      "detail": "Endpoint answered HTTP 200 (\"Authorize app / X\")."
+    },
+    {
+      "date": "2026-10-30",
+      "check": "Automated: 27 quotes re-fetched and matched against their cited pages",
+      "method": "doc-review",
+      "result": "confirmed",
+      "detail": "27 of 27 quotes found verbatim in the live page HTML.  15/16 source URLs returned HTTP 200."
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "title": "X API pay-per-usage pricing and credits",
+      "url": "https://docs.x.com/x-api/getting-started/pricing",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s2",
+      "title": "Free credit incentives for X API pay-per-use accounts",
+      "url": "https://docs.x.com/x-api/getting-started/free-credits",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s3",
+      "title": "Developer Console",
+      "url": "https://docs.x.com/fundamentals/developer-portal",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s4",
+      "title": "Getting Access",
+      "url": "https://docs.x.com/x-api/getting-started/getting-access",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s5",
+      "title": "Apps",
+      "url": "https://docs.x.com/resources/fundamentals/developer-apps",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s6",
+      "title": "OAuth 2.0 Authorization Code Flow with PKCE (reference)",
+      "url": "https://docs.x.com/resources/fundamentals/authentication/oauth-2-0/authorization-code",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s7",
+      "title": "OAuth 2.0 Authorization Code Flow with PKCE (how to connect)",
+      "url": "https://docs.x.com/resources/fundamentals/authentication/oauth-2-0/user-access-token",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s8",
+      "title": "Rate limits",
+      "url": "https://docs.x.com/x-api/fundamentals/rate-limits",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s9",
+      "title": "X Developer Agreement",
+      "url": "https://docs.x.com/developer-terms/agreement",
+      "kind": "official-policy",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s10",
+      "title": "X Developer Policy",
+      "url": "https://docs.x.com/developer-terms/policy",
+      "kind": "official-policy",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s11",
+      "title": "Restricted uses of the X API",
+      "url": "https://docs.x.com/developer-terms/more-on-restricted-use-cases",
+      "kind": "official-policy",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s12",
+      "title": "MCP servers (X MCP and Docs MCP)",
+      "url": "https://docs.x.com/tools/mcp",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s13",
+      "title": "X Ads MCP",
+      "url": "https://docs.x.com/x-ads-api/mcp",
+      "kind": "official-docs",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s14",
+      "title": "X shifts API to Pay-Per-Use; free plan effectively discontinued (roboin)",
+      "url": "https://roboin.io/article/en/2026/02/08/x-transitions-api-to-pay-per-use-model-ending-free-plan/",
+      "kind": "community",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s15",
+      "title": "X is moving legacy Basic API plans to pay-per-use (maxrave.dev)",
+      "url": "https://maxrave.dev/articles/x-legacy-basic-api-plans-moving-to-pay-per-use",
+      "kind": "community",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "s16",
+      "title": "X Automation Rules",
+      "url": "https://help.x.com/en/rules-and-policies/x-automation",
+      "kind": "official-policy",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "p1",
+      "title": "Live probe (console): Loaded: \"Developer Console\".",
+      "url": "https://console.x.com/",
+      "kind": "probe",
+      "accessed": "2026-10-30"
+    },
+    {
+      "id": "p2",
+      "title": "Live probe (authorize-endpoint): Endpoint answered HTTP 200 (\"Authorize app / X\").",
+      "url": "https://x.com/i/oauth2/authorize",
+      "kind": "probe",
+      "accessed": "2026-10-30"
+    }
+  ]
+}

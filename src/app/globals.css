@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #eef2f3;
+  --surface: #ffffff;
+  --sunken: #e3e9eb;
+  --ink: #13233a;
+  --muted: #586a7d;
+  --line: #cbd5db;
+  --sea: #1c6e80;
+  --sea-soft: #d4e8ec;
+  --wait: #c98a12;
+  --wait-soft: #f6e7c4;
+  --block: #b5432f;
+  --block-soft: #f5dcd5;
+  --ok: #2f7a4e;
+  --ok-soft: #d6eadc;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d1620;
+    --surface: #14202b;
+    --sunken: #1a2835;
+    --ink: #e4ebf0;
+    --muted: #93a3b2;
+    --line: #2a3a49;
+    --sea: #5bb6c9;
+    --sea-soft: #173540;
+    --wait: #e3ae47;
+    --wait-soft: #3a2f17;
+    --block: #e3806b;
+    --block-soft: #3d2420;
+    --ok: #64be8a;
+    --ok-soft: #1a3527;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-sea: var(--sea);
+  --color-sea-soft: var(--sea-soft);
+  --color-wait: var(--wait);
+  --color-wait-soft: var(--wait-soft);
+  --color-block: var(--block);
+  --color-block-soft: var(--block-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --font-display: var(--font-bricolage);
+  --font-sans: var(--font-public-sans);
+  --font-mono: var(--font-jetbrains);
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-public-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Waiting on the provider is drawn as hatched: time passes, but nothing for you to do. */
+.hatch-wait {
+  background-color: var(--wait-soft);
+  background-image: repeating-linear-gradient(135deg, var(--wait) 0 2px, transparent 2px 7px);
+}
+
+.prose-guide a {
+  color: var(--sea);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sea) 45%, transparent); }
+  100% { box-shadow: 0 0 0 10px transparent; }
+}
+.live-dot {
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+@media print {
+  header nav, .no-print { display: none !important; }
+  body { background: white; }
+}

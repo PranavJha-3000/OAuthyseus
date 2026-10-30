@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "OAuthyseus Console Pointer",
+  "version": "0.1.0",
+  "description": "Highlights the exact button or field for each step of an OAuthyseus guide, inside your own signed-in provider console.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://console.cloud.google.com/*",
+    "https://api.slack.com/*",
+    "https://github.com/*",
+    "https://entra.microsoft.com/*",
+    "https://portal.azure.com/*",
+    "https://app.hubspot.com/*",
+    "https://developers.hubspot.com/*",
+    "https://console.x.com/*",
+    "https://developer.x.com/*",
+    "https://www.notion.so/*",
+    "https://app.notion.com/*",
+    "https://*.vercel.app/*",
+    "http://localhost/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Start pointing on this page" },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "https://*.vercel.app/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://console.cloud.google.com/*",
+        "https://api.slack.com/*",
+        "https://github.com/*",
+        "https://entra.microsoft.com/*",
+        "https://portal.azure.com/*",
+        "https://app.hubspot.com/*",
+        "https://developers.hubspot.com/*",
+        "https://console.x.com/*",
+        "https://developer.x.com/*",
+        "https://www.notion.so/*",
+        "https://app.notion.com/*"
+      ],
+      "js": ["pointer.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
